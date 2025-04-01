@@ -1,0 +1,50 @@
+#ifndef EZSTARTKIT_WIRE_H
+#define EZSTARTKIT_WIRE_H
+
+// Button A
+#define EZSTARTKIT_IO11 5
+// Button B
+#define EZSTARTKIT_IO15 36
+
+// Buzzer
+#define EZSTARTKIT_IO0 14
+
+// GPIO
+#define EZSTARTKIT_IO8 35
+#define EZSTARTKIT_IO9 32
+#define EZSTARTKIT_IO10 17
+#define EZSTARTKIT_IO12 4
+#define EZSTARTKIT_IO14 27
+
+// IR Receiver
+#define EZSTARTKIT_IO3 33
+
+// LED (Red)
+#define EZSTARTKIT_IO4 16
+// LED (Yellow)
+#define EZSTARTKIT_IO5 12
+// LED (Green)
+#define EZSTARTKIT_IO6 13
+
+// OLED (SCL)
+#define EZSTARTKIT_IO17 22
+// OLED (SDA)
+#define EZSTARTKIT_IO18 21
+
+// Photodetector
+#define EZSTARTKIT_IO1 39
+
+// Potentiometer
+#define EZSTARTKIT_IO2 34
+
+// Relay
+#define EZSTARTKIT_IO13 25
+
+// NEOPIXELS
+#define EZSTARTKIT_IO16 26
+#define EZSTARTKIT_PIXELSIZE 3
+
+// DHT11 Sensor
+#define EZSTARTKIT_IO7 15
+
+#endif // EZSTARTKIT_WIRE_H
