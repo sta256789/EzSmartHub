@@ -9,6 +9,9 @@
 // Buzzer
 #define EZSTARTKIT_IO0 14
 
+// DHT11 Sensor
+#define EZSTARTKIT_IO7 15
+
 // GPIO
 #define EZSTARTKIT_IO8 35
 #define EZSTARTKIT_IO9 32
@@ -26,6 +29,10 @@
 // LED (Green)
 #define EZSTARTKIT_IO6 13
 
+// NEOPIXELS
+#define EZSTARTKIT_IO16 26
+#define EZSTARTKIT_PIXELSIZE 3
+
 // OLED (SCL)
 #define EZSTARTKIT_IO17 22
 // OLED (SDA)
@@ -39,12 +46,5 @@
 
 // Relay
 #define EZSTARTKIT_IO13 25
-
-// NEOPIXELS
-#define EZSTARTKIT_IO16 26
-#define EZSTARTKIT_PIXELSIZE 3
-
-// DHT11 Sensor
-#define EZSTARTKIT_IO7 15
 
 #endif // EZSTARTKIT_WIRE_H

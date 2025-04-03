@@ -12,7 +12,7 @@ String weatherIcon = "01d";
 
 int updateTimes = 0;
 
-char ONECALLKEY[] = "";
+char ONECALLKEY[] = "b1ddf353fc4a8e8183e562021753dbfb";
 
 //*************** LOCATION ************************
 
@@ -105,7 +105,8 @@ void weatherUpdate(int num = 0) {
         LOG0("Weather main: : %s\n", OWOC.current->main);
         LOG0("Weather summary: : %s\n", OWOC.current->summary);
         LOG0("Weather icon: : %s\n", OWOC.current->icon);        
-        LOG0("\nWeather update times: %d\n", updateTimes);           
+        LOG0("\nWeather update times: %d\n", updateTimes);
+        printLocalTime();           
     } 
     else {
         clockUpdate();
