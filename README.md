@@ -2,9 +2,9 @@
 ===
 
 ![main page](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/main%20page.jpeg?raw=true)  
-Main page
+Main page  
 
-![Overview](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg?raw=true)  
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg?raw=true" width="50%">  
 Overview
 
 ## **Introduction**

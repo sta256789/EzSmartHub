@@ -12,7 +12,7 @@ String weatherIcon = "01d";
 
 int updateTimes = 0;
 
-char ONECALLKEY[] = "b1ddf353fc4a8e8183e562021753dbfb";
+char ONECALLKEY[] = "";
 
 //*************** LOCATION ************************
 
