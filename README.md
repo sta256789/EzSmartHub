@@ -1,6 +1,12 @@
 **EzSmartHub**
 ===
 
+![main page](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/main%20page.jpeg?raw=true)  
+Main page
+
+![Overview](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg?raw=true)  
+Overview
+
 ## **Introduction**
 A smart home project using the ESP32 DevKit and EZ Start Kit+ expansion board, powered by the HomeSpan library. This device integrates multiple HomeKit functionalities such as temperature and humidity sensors, a relay-controlled LED light, an IR-based controller for air conditioner, and NeoPixel RGB lighting.
 
@@ -103,6 +109,9 @@ EzSmartHub/
 │ └── README.md
 ├── lib/
 │ └── README.md
+├── snapshots/
+│ ├── main page.jpeg
+│ └── overview.jpeg
 ├── src/
 │ ├── main.cpp # Main application code
 │ └── README.md
@@ -120,14 +129,18 @@ EzSmartHub/
 
 
 ## **Component Snapshots**
-![Circus EZ Start Kit+](https://shoplineimg.com/6486dbe2afaddb00694ea79f/64e211c62033b000013f5963/2000x.webp?source_format=jpg)
+![Circus EZ Start Kit+](https://shoplineimg.com/6486dbe2afaddb00694ea79f/64e211c62033b000013f5963/2000x.webp?source_format=jpg)  
+
 Circus EZ Start Kit+ from [iCShop](https://www.icshop.com.tw/products/368030200655?locale=en)
 
-![IR Transmitter](https://img.alicdn.com/imgextra/i4/663392629/TB2IEgcf93PL1JjSZFxXXcBBVXa_!!663392629.jpg)
+![IR Transmitter](https://img.alicdn.com/imgextra/i4/663392629/TB2IEgcf93PL1JjSZFxXXcBBVXa_!!663392629.jpg)  
+
 High power(3W) IR Transmitter from [ebay](https://www.ebay.com/itm/264664170125)
 
-![HW-105](https://m.media-amazon.com/images/I/31SyhtsJz1L.jpg)
+![HW-105](https://m.media-amazon.com/images/I/31SyhtsJz1L.jpg)  
+
 DC-DC Boost 5v 600ma Output from [Amazon](https://www.amazon.in/Hw-105-Dc-Dc-Boost-600ma-Output/dp/B08TVS57FG)
 
-![USB LED Light](https://m.media-amazon.com/images/I/613YFv58lUL.jpg)
+![USB LED Light](https://m.media-amazon.com/images/I/613YFv58lUL.jpg)  
+
 Portable Mini USB Led Lamp Light from [Amazon](https://www.amazon.com/iMBPrice®-Portable-Flexible-Adjust-Laptop/dp/B011M59MW8)
