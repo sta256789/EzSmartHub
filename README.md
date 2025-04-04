@@ -1,10 +1,10 @@
 **EzSmartHub**
 ===
 
-![main page](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/main%20page.jpeg?raw=true)  
+![main page](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/main%20page.jpeg)  
 Main page  
 
-<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg?raw=true" width="50%">  
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="50%">  
 Overview
 
 ## **Introduction**

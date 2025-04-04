@@ -3,6 +3,11 @@
 
 #include <OpenWeatherOneCall.h>
 #include "NTP_Service.h"
+#include "APIKey.h"
+
+#ifndef APIKEY_H
+char ONECALLKEY[] = "";
+#endif
 
 #define MAXAPICALLSPERDAY 1000
 
@@ -12,7 +17,7 @@ String weatherIcon = "01d";
 
 int updateTimes = 0;
 
-char ONECALLKEY[] = "";
+
 
 //*************** LOCATION ************************
 
