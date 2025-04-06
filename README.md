@@ -1,16 +1,16 @@
 **EzSmartHub**
 ===
 
-![main page](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_main.jpeg)  
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_main.jpeg" width="1000">  
 Main page  
 
-![forecast](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_forecast.jpeg)  
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_forecast.jpeg" width="1000">  
 Forecast  
 
-![POP](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_POP.jpeg)  
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_POP.jpeg" width="1000">  
 Probability of precipitation
 
-<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="50%">  
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="1000">  
 Overview
 
 ## **Introduction**
