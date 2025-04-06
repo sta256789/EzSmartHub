@@ -1,8 +1,14 @@
 **EzSmartHub**
 ===
 
-![main page](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/main%20page.jpeg)  
+![main page](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_main.jpeg)  
 Main page  
+
+![forecast](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_forecast.jpeg)  
+Forecast  
+
+![POP](https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_POP.jpeg)  
+Probability of precipitation
 
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="50%">  
 Overview

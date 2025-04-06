@@ -21,10 +21,10 @@ void setup() {
     // HomeSpan    
     homeSpan.setControlPin(BUTTON_BUILT_IN);
     homeSpan.setStatusPin(EZSTARTKIT_IO6);
-    homeSpan.setStatusAutoOff(10);
+    homeSpan.setStatusAutoOff(10);    
 
     homeSpan.setConnectionCallback(webServicesUpdate);  
-    homeSpan.setStatusCallback(qrCodeDisplay);
+    homeSpan.setStatusCallback(loadingSceneDisplay);
     homeSpan.begin(Category::Bridges, "HomeSpan Bridge");
 
     // This first Accessory is the new "Bridge" Accessory.  

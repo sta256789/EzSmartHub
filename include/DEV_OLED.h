@@ -3,7 +3,12 @@
 
 #ifndef OPENWEATHER_SERVICE_H
 bool weatherAvailableFlag = false;
-String weatherIcon = "01d";
+String cityStr = "N/A", stateStr = "N/A", countryStr = "N/A";
+String currentWeatherIcon = ")";
+String forecastWeatherIcon[8];
+String forecastWeekNames[8];
+String forecastHours[8];
+float forecastPOP[4];
 #endif
 
 #ifndef DEV_DHT_SENSOR_H
@@ -21,6 +26,7 @@ bool displayUnitsFlag = false;
 #include <U8g2lib.h>
 #include "IconData.h"
 #include "WeatherFont.h"
+#include "WeatherFont_30x30.h"
 #include "NTP_Service.h"
 
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ EZSTARTKIT_IO17, /* data=*/ EZSTARTKIT_IO18);   // ESP32 Thing, HW I2C with pin remapping
@@ -67,7 +73,7 @@ string spacesAdding(string content, int maxCharPerRow) {
                 if (content.compare(index, 1, " ") != 0 && content.compare(index + 1, 1, " ") == 0
                     || content.compare(index, 1, " ") == 0) {
 
-                    displayContent = content.substr(0, maxCharPerRow);
+                    displayContent = content.substr(0, maxCharPerRow);                    
                     
                     // Save the remaining contents starting from the last space for the iteration.
 
@@ -96,7 +102,7 @@ string spacesAdding(string content, int maxCharPerRow) {
                     for (int space = 0; space < index - lastSpaceIndex; ++space) {
                         displayContent += " ";
                     }
-                    
+
                     // Save the remaining contents starting from the last space for the iteration.
                     content = content.substr(lastSpaceIndex + 1);
                      
@@ -185,44 +191,58 @@ void typingAnimation (string content = "This is a demo message: The compare() fu
     // and so on...    
 }
 
-void qrCodeDisplay (HS_STATUS status) {
+void loadingSceneDisplay (HS_STATUS status) {
 
-    uint32_t clearDelay_MS = 3000;
-    uint32_t time_now = millis(); 
+    pairedStatus = status;
+
+    // uint32_t clearDelay_MS = 3000;
+    // uint32_t time_now = millis(); 
     
     u8g2.setFont(u8g2_font_8x13B_tf);
     u8g2.clear();
 
-    if (status == HS_PAIRING_NEEDED) {        
-        u8g2.firstPage();
-        do {            
-            u8g2.drawXBMP(0, 0, LOGO_WIDTH, LOGO_HEIGHT, ScannableTag);
-        } while (u8g2.nextPage());
-        pairedStatus = status;
-        LOG0("\n***** DEVICE NOT YET PAIRED -- PLEASE PAIR WITH HOMEKIT APP *****\n");
-    }    
-    else if (status == HS_PAIRED) {
-        typingAnimation("Your device has been paired to HomeKit...");
-        pairedStatus = status;
-        LOG0("\n***** YOUR DEVICE HAS BEEN PAIRED TO HOMEKIT...!! *****\n");
-        while (millis() - time_now < clearDelay_MS);
-        u8g2.clear();
+    switch (status) {
+        case HS_PAIRING_NEEDED:            
+            u8g2.firstPage();
+            do {            
+                u8g2.drawXBMP(0, 0, LOGO_WIDTH, LOGO_HEIGHT, ScannableTag);
+            } while (u8g2.nextPage());
+            break;
+        
+        case HS_PAIRED:
+            typingAnimation("Your device has been paired to HomeKit...");            
+            // while (millis() - time_now < clearDelay_MS);
+            u8g2.clear();
+            break;
+
+        case HS_WIFI_CONNECTING:
+            typingAnimation("Wifi connecting...");
+            break;
+        
+        default:
+            typingAnimation(homeSpan.statusString(status));
+            break;
     }
-    else {
-        u8g2.clear();
-    }    
+
+    LOG0("\nHS_STATUS: %s\n", homeSpan.statusString(status));
 }
 
 struct DEV_OLED : Service::Switch {
-
-    // Set the clock delay
-    uint32_t clockDelay_MS = 1000;
-    uint32_t time_now = millis();
+    
+    const int maxPage = 3;
+    int page;
+    
+    uint32_t updatePeriod_MS;
+    uint32_t time_now;    
 
     // reference to the On Characteristic
     SpanCharacteristic *displayState;
 
     DEV_OLED(int powerPin) : Service::Switch() {
+
+        page = 1;
+        updatePeriod_MS = 1000;
+        time_now = millis();
         
         displayState = new Characteristic::On(true);
 
@@ -245,8 +265,15 @@ struct DEV_OLED : Service::Switch {
             if (!displayState->getNewVal()) {            
                 u8g2.clear();
             }        
+            else {
+                if (page == 0) {
+                    page = 1;
+                } 
+                displayPage();               
+            }            
             LOG1("After press button from HomeKit, New Power=");
-            LOG1(displayState->getNewVal() ? "true\n" : "false\n");            
+            LOG1(displayState->getNewVal() ? "true\n" : "false\n");  
+            LOG1("\nPage: %d\n", page);          
         }
 
         return true;
@@ -265,25 +292,76 @@ struct DEV_OLED : Service::Switch {
             // If a SINGLE press of the power button...
             if (pressType == SpanButton::SINGLE) {
                 
-                // ...toggle the value of the power Characteristic          
-                displayState->setVal(!displayState->getVal());
-                if (!displayState->getVal()) {            
-                    u8g2.clear();
-                }           
+                if (page < maxPage) {                    
+                    ++page;
+
+                    // ...toggle the value of the power Characteristic          
+                    displayState->setVal(true);
+                }
+                else {
+                    page = 0;
+
+                    // ...toggle the value of the power Characteristic          
+                    displayState->setVal(false);
+                }
+
+                displayPage();
+
+                LOG1("\nPage: %d\n", page);
             }      
         }          
     }
 
     void loop() {
 
-        while (millis() - time_now > clockDelay_MS && displayState->getVal() && ntpAvailableFlag && pairedStatus == HS_PAIRED) {
+        while (millis() - time_now > updatePeriod_MS && displayState->getVal() && ntpAvailableFlag && pairedStatus == HS_PAIRED) {
             time_now = millis();
 
-            u8g2.firstPage();
-            do {
-                displayClock();
-                displayIcon();   
-            } while (u8g2.nextPage());            
+            displayPage();                        
+        }
+    }
+
+    void displayPage() {
+        switch (page) {
+            case 0:
+                u8g2.clear();                
+                break;
+            
+            case 1:
+                updatePeriod_MS = 1000;                
+                u8g2.firstPage();
+                do {
+                    displayClock();
+                    displayIcon();   
+                } while (u8g2.nextPage());                        
+                break;
+
+            case 2:           
+                updatePeriod_MS = 1800000;     
+                u8g2.firstPage();
+                do {
+                    u8g2.setFont(u8g2_font_8x13B_tf);
+                    displayForecast();
+                } while (u8g2.nextPage());                        
+                break;
+
+            case 3:      
+                updatePeriod_MS = 1800000;          
+                u8g2.firstPage();
+                do {
+                    u8g2.setFont(u8g2_font_8x13B_tf);
+                    displayPOP();
+                } while (u8g2.nextPage());
+                break;
+
+            default:
+                updatePeriod_MS = 3000;
+                u8g2.firstPage();
+                do {
+                    u8g2.setFont(u8g2_font_8x13B_tf);
+                    typingAnimation("THIS IS AN ERROR!");
+                } while (u8g2.nextPage());
+                break;
         }
     }
 
@@ -349,7 +427,7 @@ struct DEV_OLED : Service::Switch {
             u8g2.print(")");
         }
         else {
-            u8g2.print(iconMap[weatherIcon]);                
+            u8g2.print(iconMap[currentWeatherIcon]);                
         }
         
         // Temperaturee icon
@@ -373,6 +451,143 @@ struct DEV_OLED : Service::Switch {
         else {
             u8g2.print(currentHumidity, 1);
             u8g2.print(" %");
+        }        
+    }
+
+    void displayForecast() {
+                
+        // Print the location
+        u8g2.setFont(u8g2_font_5x8_mf);
+        int cursorX = 0;
+        int cursorY = u8g2.getMaxCharHeight() - 1;
+        u8g2.setCursor(0, cursorY);
+        u8g2.print(cityStr); 
+
+        cursorY += u8g2.getMaxCharHeight();
+        u8g2.setCursor(0, cursorY);
+        u8g2.print(stateStr);
+        u8g2.print(", ");
+        u8g2.print(countryStr);        
+
+        // Print the next four weather icons
+        u8g2.setFont(WeatherFont_30x30);
+        cursorY += u8g2.getMaxCharHeight();
+        int weatherFontWidth = u8g2.getMaxCharWidth();        
+        int cursorOffsetX;
+        int gap = 2;        
+        
+        if (!weatherAvailableFlag) {
+            
+            // if the weatehr information is unavailable, print the symbol N/A. 
+            for (int day = 1; day < 5; ++day) {
+                u8g2.setCursor(cursorX, cursorY);
+                u8g2.print(")");                
+                
+                u8g2.setFont(u8g2_font_6x13B_mf);
+                cursorOffsetX = weatherFontWidth / 2 - u8g2.getStrWidth("N/A") / 2;
+                
+                // Print the N/A on the last line.
+                u8g2.setCursor(cursorX + cursorOffsetX, 63);
+                u8g2.print("N/A");
+
+                u8g2.setFont(WeatherFont_30x30);
+                cursorX += (u8g2.getMaxCharWidth() + gap);                
+            }
+        }
+        else {
+            for (int day = 1; day < 5; ++day) {
+                u8g2.setCursor(cursorX, cursorY);
+                u8g2.print(iconMap[forecastWeatherIcon[day]]);                
+                
+                u8g2.setFont(u8g2_font_6x13B_mf);
+                cursorOffsetX = weatherFontWidth / 2 - u8g2.getStrWidth(forecastWeekNames[day].c_str()) / 2;
+                
+                // Print the weekNames on the last line.
+                u8g2.setCursor(cursorX + cursorOffsetX, 63);
+                u8g2.print(forecastWeekNames[day]);
+
+                u8g2.setFont(WeatherFont_30x30);
+                cursorX += (u8g2.getMaxCharWidth() + gap);                
+            }  
+        }
+    }
+
+    void displayPOP() {
+
+        int hLineX = 3;
+        int hLneY = 40;
+        int hLineLength = 120;
+
+        u8g2.setFont(u8g2_font_7x13B_mf);        
+        u8g2.drawStr(0, 12, "POP(%):");
+
+        // Draw a umbrella
+        u8g2.setFont(u8g2_font_9x15_m_symbols);
+        u8g2.drawGlyph(105, 14, 0x2602);
+
+        // Draw a horizontal line
+        u8g2.drawHLine(hLineX, hLneY, hLineLength);
+
+        // Draw the arrow
+        u8g2.drawLine(hLineX + hLineLength, hLneY, hLineX + hLineLength - 4, hLneY + 3);
+        u8g2.drawLine(hLineX + hLineLength, hLneY, hLineX + hLineLength - 4, hLneY - 3);
+
+        int gap = 45;
+        int vLineX = hLineX + 15;
+        int vLineY = hLneY - 4;
+        int vLineLength = 8;
+        String popStr;
+        int cursorOffsetX;
+        int cursorOffsetY;
+        
+        u8g2.setFont(u8g2_font_6x13B_mf);
+
+        // Print the POPs
+        for (int hour = 1; hour < 4; ++hour) {
+
+            // if the weatehr information is unavailable, print the symbol N/A. 
+            if (!weatherAvailableFlag) {                               
+                cursorOffsetX = u8g2.getStrWidth("N/A") / 2;
+                cursorOffsetY = 6;
+                u8g2.setCursor(vLineX + gap * (hour - 1) - cursorOffsetX, vLineY - cursorOffsetY);
+                u8g2.print("N/A");
+            }
+            else {
+
+                // Probability of precipitation. The values of the parameter vary between 0 and 1, 
+                // where 0 is equal to 0%, 1 is equal to 100%
+                popStr = String((int)(forecastPOP[hour] * 100));
+                popStr += "%";
+                cursorOffsetX = u8g2.getStrWidth(popStr.c_str()) / 2;
+                cursorOffsetY = 6;
+                u8g2.setCursor(vLineX + gap * (hour - 1) - cursorOffsetX, vLineY - cursorOffsetY);
+                u8g2.print(popStr);
+            }
+        }
+        
+        // Draw the dividing lines
+        for (int i = 0; i < 3; ++i) {
+            u8g2.drawVLine(vLineX + gap * i, vLineY, vLineLength);
+        }
+
+        // Print the next 3 hours
+        for (int hour = 1; hour < 4; ++hour) { 
+            
+            // if the weatehr information is unavailable, print the symbol N/A.
+            if (!weatherAvailableFlag) {                                
+                cursorOffsetX = u8g2.getStrWidth("N/A") / 2;
+                cursorOffsetY = u8g2.getMaxCharHeight();
+
+                u8g2.setCursor(vLineX + gap * (hour - 1) - cursorOffsetX, vLineY + vLineLength + cursorOffsetY);
+                u8g2.print("N/A");
+            }
+            else {
+                cursorOffsetX = u8g2.getStrWidth(forecastHours[hour].c_str()) / 2;
+                cursorOffsetY = u8g2.getMaxCharHeight();
+
+                u8g2.setCursor(vLineX + gap * (hour - 1) - cursorOffsetX, vLineY + vLineLength + cursorOffsetY);
+                u8g2.print(forecastHours[hour]);
+            }            
         }
         
     }

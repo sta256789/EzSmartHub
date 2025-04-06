@@ -3,7 +3,6 @@
 
 #include <OpenWeatherOneCall.h>
 #include "NTP_Service.h"
-#include "APIKey.h"
 
 #ifndef APIKEY_H
 char ONECALLKEY[] = "";
@@ -13,11 +12,19 @@ char ONECALLKEY[] = "";
 
 bool weatherAvailableFlag = false;
 
-String weatherIcon = "01d";
+String cityStr, stateStr, countryStr;
+
+String currentWeatherIcon;
+
+String forecastWeatherIcon[8];
+
+String forecastWeekNames[8];
+
+String forecastHours[8];
+
+float forecastPOP[4];
 
 int updateTimes = 0;
-
-
 
 //*************** LOCATION ************************
 
@@ -95,6 +102,9 @@ void weatherUpdate(int num = 0) {
     }
 
     // Location info is available for ALL modes
+    cityStr = OWOC.location.CITY;
+    stateStr = OWOC.location.STATE;
+    countryStr = OWOC.location.COUNTRY;
     LOG0("\nLocation: % s, % s % s\n", OWOC.location.CITY, OWOC.location.STATE, OWOC.location.COUNTRY);
     
     //Check if data is in the struct for all variables before using them
@@ -102,7 +112,8 @@ void weatherUpdate(int num = 0) {
         ++updateTimes;
         ntpAvailableFlag = true;
         weatherAvailableFlag = true;
-        weatherIcon = OWOC.current->icon;
+        currentWeatherIcon = OWOC.current->icon;
+        printLocalTime(); 
         LOG0("\nCURRENT\n");
         LOG0("Temp : % .0f\n", OWOC.current->temperature);
         LOG0("Humidity : % .0f\n", OWOC.current->humidity); 
@@ -110,14 +121,34 @@ void weatherUpdate(int num = 0) {
         LOG0("Weather main: : %s\n", OWOC.current->main);
         LOG0("Weather summary: : %s\n", OWOC.current->summary);
         LOG0("Weather icon: : %s\n", OWOC.current->icon);        
-        LOG0("\nWeather update times: %d\n", updateTimes);
-        printLocalTime();           
+        LOG0("\nWeather update times: %d\n", updateTimes);                  
     } 
     else {
         clockUpdate();
-        weatherAvailableFlag = false;
+        weatherAvailableFlag = false;        
         LOG0("\nThe weather information is unavailable!\n");
         LOG0("\nCURRENT IS OFF or EMPTY\n");
+    }
+
+    //Check if data is in the struct for all variables before using them
+    if (OWOC.forecast) {  
+
+        LOG0("\nFORECAST - Up to 8 days future forecast\n");
+        for (int day = 0; day < 8; day++) {
+            forecastWeatherIcon[day] = OWOC.forecast[day].icon;
+            forecastWeekNames[day] = OWOC.forecast[day].weekDayName;
+            LOG0("Date: %s Icon: %s\n", forecastWeekNames[day], forecastWeatherIcon[day]);
+        }
+
+        LOG0("\nHOURLY   - Up to 48 hours forecast\n");
+        for (int hour = 0; hour < 4; hour++) {
+            forecastHours[hour] = OWOC.hour[hour].readableTime;
+            forecastPOP[hour] = OWOC.hour[hour].pop;
+            LOG0("%s The chance of rain: % .2f\n", OWOC.hour[hour].readableTime, OWOC.hour[hour].pop);            
+        }
+    } 
+    else {
+        LOG0("\nFORECAST IS OFF or EMPTY\n");
     }
 }
 

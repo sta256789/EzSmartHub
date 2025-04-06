@@ -87,7 +87,7 @@ struct NeoPixel_RGB : Service::LightBulb {
       // Serial.printf("v:%f ", v);
       // Serial.println(HSVtoRGB(h*p, s*p, v*p), BIN);
       // Serial.println(pixels.gamma32((pixels.ColorHSV(h*p, s*p, v*p))), BIN);
-      LOG1("Power: %d Hue: %.1f Saturation: %.1f Brightness: %.1f", powerState, hue, saturation, brightness);
+      LOG1("Power: %d Hue: %.1f Saturation: %.1f Brightness: %.1f\n", powerState, hue, saturation, brightness);
   
       pixels.show();   // Send the updated pixel colors to the hardware.
             
