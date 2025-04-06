@@ -2,15 +2,19 @@
 ===
 
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_main.jpeg" width="300">  
+
 Main page  
 
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_forecast.jpeg" width="300">  
+
 Forecast  
 
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/page_POP.jpeg" width="300">  
-Probability of precipitation
+
+Probability of precipitation  
 
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="300">  
+  
 Overview
 
 ## **Introduction**
