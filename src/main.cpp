@@ -17,11 +17,11 @@ uint32_t time_now = millis();
 void setup() {
     // put your setup code here, to run once:
     Serial.begin(115200);
-
+    
     // HomeSpan    
     homeSpan.setControlPin(BUTTON_BUILT_IN);
     homeSpan.setStatusPin(EZSTARTKIT_IO6);
-    homeSpan.setStatusAutoOff(10);    
+    homeSpan.setStatusAutoOff(10);        
 
     homeSpan.setConnectionCallback(webServicesUpdate);  
     homeSpan.setStatusCallback(loadingSceneDisplay);
@@ -67,13 +67,13 @@ void setup() {
     new Service::AccessoryInformation();
     new Characteristic::Identify();
     new Characteristic::Name("OLED Button");
-    new DEV_OLED(EZSTARTKIT_IO15);  
+    new DEV_OLED(EZSTARTKIT_IO11, EZSTARTKIT_IO15);  
 }
 
 void loop() {
     // put your main code here, to run repeatedly:
     homeSpan.poll();
-
+    
     if (millis() - time_now > webServicesUpdatePeriod_MS) {
         time_now = millis();
 

@@ -102,7 +102,7 @@ Install the following libraries in Arduino IDE:
 ## **Future Improvements**
 - Add more weather information and weather forecast on the OLED screen.
 - Add more AC status on the OLED screen.
-- Implement a Tomato Clock.
+- Implement a Pomodoro timer.
 
 
 

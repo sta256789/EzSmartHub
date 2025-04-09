@@ -22,12 +22,15 @@ float currentHumidity = 0.0;
 bool displayUnitsFlag = false;
 #endif
 
+#include <initializer_list>
 #include <map>
 #include <U8g2lib.h>
 #include "IconData.h"
 #include "WeatherFont.h"
 #include "WeatherFont_30x30.h"
 #include "NTP_Service.h"
+#include "PassiveBuzzer.h"
+
 
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ EZSTARTKIT_IO17, /* data=*/ EZSTARTKIT_IO18);   // ESP32 Thing, HW I2C with pin remapping
 
@@ -36,6 +39,21 @@ U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* 
 
 #define SMALL_LOGO_WIDTH 16
 #define SMALL_LOGO_HEIGHT 16
+
+enum DisplayMode {
+    NORMAL = 0,
+    POMODORO = 1 
+};
+
+enum PomodoroState {
+    RESET = 0,
+    READY = 1,
+    TASK = 2,
+    BREAK = 3,
+    REST = 4,
+    STOP = 5, 
+    SKIP = 6
+};
 
 HS_STATUS pairedStatus;
 
@@ -194,11 +212,8 @@ void typingAnimation (string content = "This is a demo message: The compare() fu
 void loadingSceneDisplay (HS_STATUS status) {
 
     pairedStatus = status;
-
-    // uint32_t clearDelay_MS = 3000;
-    // uint32_t time_now = millis(); 
     
-    u8g2.setFont(u8g2_font_8x13B_tf);
+    u8g2.setFont(u8g2_font_8x13B_mf);
     u8g2.clear();
 
     switch (status) {
@@ -210,13 +225,12 @@ void loadingSceneDisplay (HS_STATUS status) {
             break;
         
         case HS_PAIRED:
-            typingAnimation("Your device has been paired to HomeKit...");            
-            // while (millis() - time_now < clearDelay_MS);
+            typingAnimation("Your device has been paired to HomeKit...");
             u8g2.clear();
             break;
 
         case HS_WIFI_CONNECTING:
-            typingAnimation("Wifi connecting...");
+            typingAnimation("WiFi connecting...");
             break;
         
         default:
@@ -224,35 +238,68 @@ void loadingSceneDisplay (HS_STATUS status) {
             break;
     }
 
-    LOG0("\nHS_STATUS: %s\n", homeSpan.statusString(status));
+    LOG1("\nHS_STATUS: %s\n", homeSpan.statusString(status));
 }
 
-struct DEV_OLED : Service::Switch {
+struct DEV_OLED : Service::Switch {    
+        
+    const int Task_Period = 1500;
+    const int Break_Period = 300;
+    const int Rest_Period = 1800;
+    const int Max_Finished_Times = 4;
+
+    enum PomodoroState currentPomodoroState;
+    enum PomodoroState nextPomodoroState;
+    enum PomodoroState tempPomodoroState;
+    int second;    
+    int minute;
+    int progress; 
+    int finishedTimes;
     
-    const int maxPage = 3;
+    enum DisplayMode displayMode;
+    int maxPage;
     int page;
     
     uint32_t updatePeriod_MS;
     uint32_t time_now;    
 
+    int selectPin;
+    int powerPin;
+
     // reference to the On Characteristic
     SpanCharacteristic *displayState;
 
-    DEV_OLED(int powerPin) : Service::Switch() {
+    DEV_OLED(int selectPin, int powerPin) : Service::Switch() {
 
+        buzzerInitialize();
+        
+        currentPomodoroState = RESET;
+        nextPomodoroState = TASK;
+        second = Task_Period;    
+        minute = second / 60;
+        progress = 100 - (second * 100) / Task_Period;
+        finishedTimes = 0;               
+
+        displayMode = NORMAL;
+        maxPage = 3;
         page = 1;
+
         updatePeriod_MS = 1000;
         time_now = millis();
+
+        this->selectPin = selectPin;
+        this->powerPin = powerPin;
         
         displayState = new Characteristic::On(true);
 
         // Create new SpanButton to control power using pushbutton on pin number "buttonPin"
+        new SpanButton(selectPin);
         new SpanButton(powerPin);
         
-        // OLED Initialize
+        // OLED Initialize        
         u8g2.begin();
 
-        LOG0(F("\n***** OLED HAS BEEN INITIALIZED!! *****\n"));
+        LOG0(F("OLED has been initialized!!\n"));
         
     } // end constructor
 
@@ -279,90 +326,292 @@ struct DEV_OLED : Service::Switch {
         return true;
     }
 
-    void button(int powerPin, int pressType) override {
+    void button(int buttonPin, int pressType) override {
 
         LOG1("Found button press on pin: ");
-        LOG1(powerPin);
+        LOG1(buttonPin);
         LOG1("\ntype: ");
         LOG1(pressType == SpanButton::LONG ? "LONG" : (pressType==SpanButton::SINGLE) ? "SINGLE" : "DOUBLE");
         LOG1("\n");    
 
-        if (powerPin == powerPin) {
+        if (buttonPin == selectPin) {
+
+            // If a SINGLE press of the power button...
+            if (pressType == SpanButton::SINGLE) {
+
+                if (displayMode == POMODORO) {
+                    
+                    // Record the currnetState before goto state STOP.
+                    // When the button be preesed next time, currentState can resume to the original one. 
+                    if (currentPomodoroState != STOP) {
+                        tempPomodoroState = currentPomodoroState;
+                    } 
+                    currentPomodoroState = nextPomodoroState;
+                }
+                else {
+                    if (page < maxPage) {                    
+                        ++page;
+    
+                        // ...toggle the value of the power Characteristic          
+                        displayState->setVal(true);
+                    }
+                    else {
+                        page = 0;
+    
+                        // ...toggle the value of the power Characteristic          
+                        displayState->setVal(false);
+                    } 
+                }
+
+                displayPage();
+                LOG1("Mode: %d Page: %d/%d\n", displayMode, page, maxPage);
+            } 
+            else if (pressType == SpanButton::DOUBLE) {
+
+                if (displayMode == POMODORO) {
+
+                    // Ready to break, Stop breaking, Breaking...
+                    if ((currentPomodoroState == READY || currentPomodoroState == STOP) 
+                    && (nextPomodoroState == BREAK || nextPomodoroState == TASK)
+                    || (currentPomodoroState == BREAK)) {
+                        
+                        currentPomodoroState = SKIP;                        
+                    }                    
+                    // Ready to break, Stop resting, Resting...
+                    else if (currentPomodoroState == REST || (currentPomodoroState == READY && nextPomodoroState == REST) 
+                        || (currentPomodoroState == STOP && nextPomodoroState == REST)) {
+                        
+                        currentPomodoroState = RESET;
+                    }
+                }                
+            }
+            else if (pressType == SpanButton::LONG) {
+
+                if (displayMode == POMODORO) {
+                    displayMode = NORMAL;
+                    maxPage = 3;
+                    page = 1;
+                }
+                else {
+                    displayMode = POMODORO;
+                    maxPage = 2;
+                    page = 1;
+                }
+                displayPage();
+                LOG1("Mode: %d Page: %d/%d\n", displayMode, page, maxPage);
+            }     
+        }
+        
+        if (buttonPin == powerPin) {
 
             // If a SINGLE press of the power button...
             if (pressType == SpanButton::SINGLE) {
                 
-                if (page < maxPage) {                    
-                    ++page;
+                // ...toggle the value of the power Characteristic          
+                displayState->setVal(1 - displayState->getVal());
+                page = displayState->getVal();  
+                displayPage();
+            } 
+            else if (pressType == SpanButton::LONG) {
 
-                    // ...toggle the value of the power Characteristic          
-                    displayState->setVal(true);
+                if (displayMode == POMODORO) {
+
+                    // Reset the Pomodoro timer
+                    currentPomodoroState = RESET;                    
+                    LOG1("Reset the Pomodoro timer!\n");
                 }
                 else {
-                    page = 0;
 
-                    // ...toggle the value of the power Characteristic          
-                    displayState->setVal(false);
+                    // Update weather information manually
+                    weatherUpdate();
                 }
 
-                displayPage();
-
-                LOG1("\nPage: %d\n", page);
-            }      
-        }          
+                displayPage();                
+            }     
+        }
     }
 
     void loop() {
 
-        while (millis() - time_now > updatePeriod_MS && displayState->getVal() && ntpAvailableFlag && pairedStatus == HS_PAIRED) {
+        while (millis() - time_now > updatePeriod_MS && ntpAvailableFlag && pairedStatus == HS_PAIRED 
+            && (displayState->getVal() || displayMode == POMODORO)) {
+
             time_now = millis();
+
+            if (displayMode == POMODORO) {
+                switch (currentPomodoroState) {
+                    case RESET:
+                        second = Task_Period;
+                        minute = second / 60;
+                        progress = 100 - (second * 100) / Task_Period;                    
+                        finishedTimes = 0;
+                        currentPomodoroState = READY;
+                        nextPomodoroState = TASK;                        
+                        break;
+    
+                    case READY:
+                        break;
+    
+                    case TASK:
+                        if (second > 0) {                    
+                            second -= 1;
+                            minute = second / 60;
+                            progress = 100 - (second * 100) / Task_Period;
+                            nextPomodoroState = STOP;                            
+                        }
+                        else {
+                            ++finishedTimes;
+                            if (finishedTimes < Max_Finished_Times) { 
+                                second = Break_Period;
+                                minute = second / 60;
+                                progress = 100 - (second * 100) / Break_Period;
+                                nextPomodoroState = BREAK;
+                            }
+                            else {
+                                second = Rest_Period;
+                                minute = second / 60;
+                                progress = 100 - (second * 100)/ Rest_Period;
+                                nextPomodoroState = REST;
+                            } 
+                            currentPomodoroState = READY;
+                            ringBuzzer(taskEndingMelody, taskEndingDuration);                                                                 
+                        }                         
+                        break;
+    
+                    case BREAK:
+                        if (second > 0) {                    
+                            second -= 1;
+                            minute = second / 60;
+                            progress = 100 - (second * 100) / Break_Period;
+                            nextPomodoroState = STOP;                                                   
+                        }
+                        else { 
+                            second = Task_Period;
+                            minute = second / 60;
+                            progress = 100 - (second * 100) / Task_Period;
+                            nextPomodoroState = TASK;
+                            currentPomodoroState = READY;                            
+                            ringBuzzer(breakEndingMelody, breakEndingDuration);                                                                    
+                        } 
+                        break;
+    
+                    case REST:
+                        if (second > 0) {                    
+                            second -= 1;
+                            minute = second / 60;
+                            progress = 100 - (second * 100)/ Rest_Period;
+                            nextPomodoroState = STOP;
+                        }
+                        else {                               
+                            nextPomodoroState = RESET;
+                            currentPomodoroState = READY;
+                            ringBuzzer(setCompletedMelody, setCompletedDuration);                                                                   
+                        }  
+                        break;
+                    
+                    case STOP:                        
+                        nextPomodoroState = tempPomodoroState;                        
+                        break;
+                    
+                    case SKIP:
+                        if (nextPomodoroState == TASK || nextPomodoroState == BREAK || nextPomodoroState == STOP) {
+                            second = Task_Period;
+                            minute = second / 60;
+                            progress = 100 - (second * 100) / Task_Period;                            
+                            nextPomodoroState = TASK;                            
+                        }  
+                        break;
+                    
+                    default:
+                        break;
+                }              
+            }            
 
             displayPage();                        
         }
     }
 
     void displayPage() {
-        switch (page) {
+        if (displayMode == NORMAL) {
+            switch (page) {
+                case 0:
+                    u8g2.clear();                
+                    break;
+                
+                case 1:
+                    updatePeriod_MS = 1000;                                    
+                    u8g2.firstPage();
+                    do {
+                        displayClock();
+                        displayIcon();   
+                    } while (u8g2.nextPage());                        
+                    break;
+    
+                case 2:           
+                    updatePeriod_MS = 1800000;                         
+                    u8g2.firstPage();
+                    do {                    
+                        displayForecast();
+                    } while (u8g2.nextPage());                        
+                    break;
+    
+                case 3:      
+                    updatePeriod_MS = 1800000;                              
+                    u8g2.firstPage();
+                    do {                    
+                        displayPOP();
+                    } while (u8g2.nextPage());
+                    break;               
+    
+                default:
+                    updatePeriod_MS = 3000;                    
+                    u8g2.firstPage();
+                    do {
+                        displayErrorMessage(); 
+                    } while (u8g2.nextPage());                    
+                    break;
+            }
+        }
+        else {
+            switch (page) {
             case 0:
                 u8g2.clear();                
                 break;
             
             case 1:
-                updatePeriod_MS = 1000;                
+                updatePeriod_MS = 1000;                                       
                 u8g2.firstPage();
                 do {
-                    displayClock();
-                    displayIcon();   
-                } while (u8g2.nextPage());                        
+                    displayPomodoroTimer();
+                    displayPomodoroCheckbox();
+                    
+                    if ((currentPomodoroState == READY || currentPomodoroState == SKIP) && nextPomodoroState == TASK) {                        
+                        displayHintMessage("Let's start a task!");
+                    }
+                    else if (currentPomodoroState == READY && nextPomodoroState == BREAK) {
+                        displayHintMessage("Let's take a break!");
+                    }
+                    else if (currentPomodoroState == READY && nextPomodoroState == REST) {
+                        displayHintMessage("Let's take a rest!");
+                    }
+                    else if (currentPomodoroState == READY && nextPomodoroState == RESET) {
+                        displayHintMessage("Congrats! A set is over!");
+                    }
+                    else {
+                        displayPomodoroBar();
+                    }                                        
+                } while (u8g2.nextPage());                
                 break;
-
-            case 2:           
-                updatePeriod_MS = 1800000;     
-                u8g2.firstPage();
-                do {
-                    u8g2.setFont(u8g2_font_8x13B_tf);
-                    displayForecast();
-                } while (u8g2.nextPage());                        
-                break;
-
-            case 3:      
-                updatePeriod_MS = 1800000;          
-                u8g2.firstPage();
-                do {
-                    u8g2.setFont(u8g2_font_8x13B_tf);
-                    displayPOP();
-                } while (u8g2.nextPage());
-                break;
-
+            
             default:
-                updatePeriod_MS = 3000;
+                updatePeriod_MS = 10000;
                 u8g2.firstPage();
                 do {
-                    u8g2.setFont(u8g2_font_8x13B_tf);
-                    typingAnimation("THIS IS AN ERROR!");
-                } while (u8g2.nextPage());
+                    displayErrorMessage(); 
+                } while (u8g2.nextPage());                                
                 break;
-        }
+            }
+        }        
     }
 
     void displayClock() {
@@ -373,7 +622,7 @@ struct DEV_OLED : Service::Switch {
         localtime_r(&now, &timeInfo);
         
         // Week
-        u8g2.setFont(u8g2_font_8x13B_tf);
+        u8g2.setFont(u8g2_font_8x13B_mf);
         u8g2.setCursor(2, 12);
         u8g2.print(&timeInfo, "%a");
 
@@ -394,7 +643,7 @@ struct DEV_OLED : Service::Switch {
 
 
         // Month        
-        u8g2.setFont(u8g2_font_8x13B_tf);
+        u8g2.setFont(u8g2_font_8x13B_mf);
         char strftime_buf[4];
         strftime(strftime_buf, sizeof(strftime_buf), "%b", &timeInfo);      
         u8g2.drawButtonUTF8(2, 52, U8G2_BTN_INV, 0,  2,  2, strftime_buf);
@@ -452,6 +701,10 @@ struct DEV_OLED : Service::Switch {
             u8g2.print(currentHumidity, 1);
             u8g2.print(" %");
         }        
+    }
+
+    float unitCovert(float temperatrue) {
+        return temperatrue * 9 / 5 + 32;
     }
 
     void displayForecast() {
@@ -588,14 +841,131 @@ struct DEV_OLED : Service::Switch {
                 u8g2.setCursor(vLineX + gap * (hour - 1) - cursorOffsetX, vLineY + vLineLength + cursorOffsetY);
                 u8g2.print(forecastHours[hour]);
             }            
+        }        
+    }
+
+    void displayPomodoroTimer() {        
+
+        u8g2.setFont(u8g2_font_inb24_mn);        
+        int timerX = 0;
+        int timerY = u8g2.getMaxCharHeight() - 1;
+        u8g2.setCursor(timerX, timerY);
+        if (minute < 10) {
+            u8g2.print("0");      
         }
+        u8g2.print(minute);
+        u8g2.print(":");
+        if (second % 60 < 10) {
+            u8g2.print("0");      
+        }
+        u8g2.print(second % 60);        
+    }
+
+    void displayPomodoroBar() {
+        
+        int emptyBarX = 0;
+        int emptyBarY = 44;
+        int emptyBarWidth = 104;
+        int emptyBarHeigh = 20;
+        int emptyBarRadius = 2;
+        int space = 2;
+        int filledBarX = emptyBarX + space;
+        int filledBarY = emptyBarY + space;
+        int filledBarWidth = progress;
+        int filledBarHeigh = emptyBarHeigh - 2 * space;
+
+        // The radius argument of the drawRBox/drawRFrame, must meet the requirement w >= 2 * (r + 1)
+        int filledBarRadius = progress / 2 - 1 >= emptyBarRadius ? emptyBarRadius: 0;
+                
+        String progressStr = String(filledBarWidth);
+        progressStr += " %";
+
+        u8g2.setFont(u8g2_font_6x13B_mf);
+
+        // Draw the progress bar and the edge
+        u8g2.drawRFrame(emptyBarX, emptyBarY, emptyBarWidth, emptyBarHeigh, emptyBarRadius);
+        u8g2.drawRBox(filledBarX, filledBarY, filledBarWidth, filledBarHeigh, filledBarRadius);
+        
+        // Draw the progress inside the bar
+        u8g2.setFontMode(1);
+        u8g2.setDrawColor(2);
+        u8g2.drawStr(emptyBarX + (emptyBarWidth - u8g2.getStrWidth(progressStr.c_str())) / 2, 
+            filledBarY + u8g2.getMaxCharHeight() - 1, progressStr.c_str());
+        u8g2.setFontMode(0);
+        u8g2.setDrawColor(1);
+    }    
+
+    void displayPomodoroCheckbox() {
+
+        u8g2.setFont(u8g2_font_unifont_t_76);
+        
+        // Set the checkboxes on the rightmost side
+        int checkboxX = u8g2.getDisplayWidth() - u8g2.getMaxCharWidth();
+        int checkboxY = u8g2.getMaxCharHeight();
+
+        // Draw the filled checkbox 
+        for (int i = 0; i < finishedTimes; ++i) {
+            u8g2.drawGlyph(checkboxX, checkboxY, 0x2611);
+            checkboxY += u8g2.getMaxCharHeight();
+        }
+
+        // Draw the empty checkbox                
+        for (int i = 0; i < Max_Finished_Times - finishedTimes; ++i) {
+            u8g2.drawGlyph(checkboxX, checkboxY, 0x2610);
+            checkboxY += u8g2.getMaxCharHeight();
+        }     
+    }
+
+    void displayHintMessage(string hintMessage) {
+
+        u8g2.setFont(u8g2_font_5x8_mf);
+
+        int space = 2;
+        int gap = 1;
+        
+        // Set the dialog box background on the bottom which can contain tree row and plus a space on top/botton sides
+        int rBoxWidth = u8g2.getDisplayWidth();
+        int rBoxHeigh = u8g2.getMaxCharHeight() * 3 + 2 * space;
+        int rBoxX = 0;
+        int rBoxY = u8g2.getDisplayHeight() - rBoxHeigh;
+        int radius = 7;
+
+        u8g2.drawRBox(rBoxX, rBoxY, rBoxWidth, rBoxHeigh, radius);
+
+        // Set the dialog box edge with a gap between the background
+        int rFrameX = rBoxX + gap;
+        int rFrameY = rBoxY + gap;
+        int rFrameWidth = rBoxWidth - 2 * gap;
+        int rFrameHeigh = rBoxHeigh - 2 * gap;    
+        
+        u8g2.setDrawColor(0);
+        u8g2.drawRFrame(rFrameX, rFrameY, rFrameWidth, rFrameHeigh, radius);
+
+        // Center the first sentence
+        int hintX = (u8g2.getDisplayWidth() - u8g2.getStrWidth(hintMessage.c_str())) / 2;
+        int hintY = rBoxY + gap + u8g2.getMaxCharHeight();
+        
+        u8g2.drawStr(hintX, hintY, hintMessage.c_str());
+
+        // Second sentence is flush left
+        hintMessage = "Press button A";
+        hintX = rFrameX + 2 * gap;
+        hintY += u8g2.getMaxCharHeight();
+        u8g2.drawStr(hintX, hintY, hintMessage.c_str());
+
+        // Third sentence is flush right
+        hintMessage = "to continue...";
+        hintX = rFrameX + rFrameWidth - 4 * gap - u8g2.getStrWidth(hintMessage.c_str());
+        hintY += u8g2.getMaxCharHeight();
+        u8g2.drawStr(hintX, hintY, hintMessage.c_str());        
+        u8g2.setDrawColor(1);
         
     }
 
-    float unitCovert(float temperatrue) {
-        return temperatrue * 9 / 5 + 32;
-    }
-    
+    void displayErrorMessage() {        
+        u8g2.setFont(u8g2_font_8x13B_mf);
+        typingAnimation("THIS IS AN ERROR!");        
+    } 
 };
 
 #endif // DEV_OLED_H
