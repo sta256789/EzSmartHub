@@ -15,7 +15,11 @@ Probability of precipitation
 
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/pomodoro_timer.jpeg" width="300">  
 
-Pomodoro Timer
+Pomodoro Timer  
+
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/HomeKit_screenshot.jpeg" width="300">  
+
+Homekit
 
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="300">  
   
@@ -150,6 +154,7 @@ EzSmartHub/
 ├── lib/
 │ └── README.md
 ├── snapshots/│ 
+│ ├── HomeKit_screenshot.jpeg
 │ ├── overview.jpeg
 │ ├── page_forecast.jpeg
 │ ├── page_main.jpeg

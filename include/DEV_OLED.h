@@ -510,7 +510,10 @@ struct DEV_OLED : Service::Switch {
                         break;
                 }
             }
-            displayPage();                        
+
+            if (displayState->getVal()) {
+                displayPage(); 
+            }                                   
         }
     }
 
