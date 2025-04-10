@@ -13,13 +13,13 @@ Forecast
 
 Probability of precipitation  
 
-<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="300">  
-  
-Overview  
-
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/pomodoro_timer.jpeg" width="300">  
 
 Pomodoro Timer
+
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="300">  
+  
+Overview 
 
 ## **Introduction**
 A smart home project using the ESP32 DevKit and EZ Start Kit+ expansion board, powered by the HomeSpan library. This device integrates multiple HomeKit functionalities such as temperature and humidity sensors, a relay-controlled LED light, an IR-based controller for air conditioner, and NeoPixel RGB lighting.
