@@ -15,7 +15,11 @@ Probability of precipitation
 
 <img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/overview.jpeg" width="300">  
   
-Overview
+Overview  
+
+<img src="https://github.com/sta256789/EzSmartHub/blob/main/snapshots/pomodoro_timer.jpeg" width="300">  
+
+Pomodoro Timer
 
 ## **Introduction**
 A smart home project using the ESP32 DevKit and EZ Start Kit+ expansion board, powered by the HomeSpan library. This device integrates multiple HomeKit functionalities such as temperature and humidity sensors, a relay-controlled LED light, an IR-based controller for air conditioner, and NeoPixel RGB lighting.
@@ -23,11 +27,13 @@ A smart home project using the ESP32 DevKit and EZ Start Kit+ expansion board, p
 
 
 ## **Features**
-- **Clock Display**: Displays the current time, calendar, weather and the indoor temperature/relative humidity on a 1.3-inch OLED screen.
+- **OLED Display**: Displays the current time, calendar, weather and the indoor temperature/relative humidity on a 1.3-inch OLED screen.
 - **Temperature and Humidity Monitoring**: Uses sensors to monitor environmental conditions and displays data via HomeKit.
 - **Relay-Controlled Light**: Allows control of an LED light connected via a relay module.
 - **Cooler Controller**: Sends infrared signals to control an air conditioner.
-- **NeoPixel RGB Lighting**: Supports dynamic RGB lighting effects using WS2812B LEDs.
+- **NeoPixel RGB Lighting**: Supports dynamic RGB lighting effects using WS2812B LEDs.  
+- **Weather Forecast**: Provides current weather updates, a three-day forecast, and the probability of precipitation for the next three hours in your location.
+- **Pomodoro Timer**: Provides a pomodoro timer with notification sound effects to alert users when a task or break has been finished.
 
 
 
@@ -64,7 +70,9 @@ A smart home project using the ESP32 DevKit and EZ Start Kit+ expansion board, p
 | Component         | EZ Start Kit+ Pin | GPIO No. | Notes                            |
 |-------------------|-------------------|----------|----------------------------------|
 | Built-in Button   | -                 | 0        | Used for HomeSpan control        |
+| Button A          | IO11              | 5        | switch the pages/timer control   |
 | Button B          | IO15              | 36       | Used for turning the OLED on/off |
+| Buzeer            | IO0               | 14       | Used for making sound effects    |
 | DHT11 Sensor      | IO7               | 15       | Data pin                         |
 | LED (Green)       | IO6               | 13       | Used for HomeSpan status         |
 | IR Transmitter    | IO5               | 12       | Sends IR signals for AC control  |
@@ -92,17 +100,30 @@ Install the following libraries in Arduino IDE:
 ## **Usage**
 1. Pair the device with Apple HomeKit using the setup code (466-37-726 by default) or scan the QR code displayed on the OLED screen.
 2. Control features through Apple's Home app:
-   - View real-time temperature and humidity data.
-   - Toggle the relay-controlled light on or off.
-   - Adjust AC settings via IR commands.
-   - Change NeoPixel lighting effects.
-
+    - View real-time temperature and humidity data.
+    - Toggle the relay-controlled light on or off.
+    - Adjust AC settings via IR commands.
+    - Change NeoPixel lighting effects.
+3. Button A
+    - On NORMAL mode
+        - Press to switch the pages(main/forecast/POP)
+        - Press and hold for about three seconds to switch the modes(NORMAL->POMODORO)
+    - On POMODORO mode
+        - Press to start/pause the current task/break
+        - Double Press quickly to skip a break
+        - Press and hold for about three seconds to switch the modes(POMODORO->NORMAL)  
+4. Button B
+    - On NORMAL mode
+        - Press to toggle the OLED screen on/off
+        - Press and hold for about three seconds to manually update weatehr information 
+    - On POMODORO mode
+        - Press to toggle the OLED screen on/off
+        - Press and hold for about three seconds to reset the timer  
 
 
 ## **Future Improvements**
-- Add more weather information and weather forecast on the OLED screen.
 - Add more AC status on the OLED screen.
-- Implement a Pomodoro timer.
+- Optimize the Pomodoro timer.
 
 
 
@@ -110,18 +131,30 @@ Install the following libraries in Arduino IDE:
 ```
 EzSmartHub/
 ├── include/ # Header files for various modules
-│ ├── EzStartKit_Wire.h # EZ Start Kit+ wiring definitions
-│ ├── DEV_DHT_Sensor.h # Temperature and humidity sensor module
-│ ├── DEV_Relay.h # Relay control module
-│ ├── DEV_NeoPixel.h # NeoPixel RGB LED module
+│ ├── CoolerData.h
 │ ├── DEV_Cooler.h # IR-based cooler (AC) controller module
+│ ├── DEV_DHT_Sensor.h # Temperature and humidity sensor module
+│ ├── DEV_NeoPixel.h # NeoPixel RGB LED module
 │ ├── DEV_OLED.h # OLED display module
-│ └── README.md
+│ ├── DEV_Relay.h # Relay control module
+│ ├── EzStartKit_Wire.h # EZ Start Kit+ wiring definitions
+│ ├── IconData.h
+│ ├── NTP_Service.h
+│ ├── OpenWeather_Service.h
+│ ├── PassiveBuzzer.h
+│ ├── PitchesDate.h
+│ ├── README.md
+│ ├── WeatherFont_30x30.h
+│ ├── WeatherFont.h
+│ └── Web_Service.h
 ├── lib/
 │ └── README.md
-├── snapshots/
-│ ├── main page.jpeg
-│ └── overview.jpeg
+├── snapshots/│ 
+│ ├── overview.jpeg
+│ ├── page_forecast.jpeg
+│ ├── page_main.jpeg
+│ ├── page_POP.jpeg
+│ └── pomodoro_timer.jpeg
 ├── src/
 │ ├── main.cpp # Main application code
 │ └── README.md
@@ -133,9 +166,10 @@ EzSmartHub/
 └── README.md
 ```
 
-## **Demo**
-[Demo](https://github.com/sta256789/EzSmartHub)
-
+## **Demo**  
+[Demo - Pairing](https://youtube.com/shorts/Ei-KU9-NfSk?feature=share)  
+[Demo - Homekit Functionalities](https://github.com/sta256789/EzSmartHub)  
+[Demo - Pomodoro Timer](https://youtube.com/shorts/nH1oJpyOQvY?feature=share)
 
 
 ## **Component Snapshots**
