@@ -114,14 +114,10 @@ void weatherUpdate(int num = 0) {
         weatherAvailableFlag = true;
         currentWeatherIcon = OWOC.current->icon;
         printLocalTime(); 
-        LOG0("\nCURRENT\n");
-        LOG0("Temp : % .0f\n", OWOC.current->temperature);
-        LOG0("Humidity : % .0f\n", OWOC.current->humidity); 
-        LOG0("Weather id: : % .0f\n", OWOC.current->id);        
-        LOG0("Weather main: : %s\n", OWOC.current->main);
-        LOG0("Weather summary: : %s\n", OWOC.current->summary);
-        LOG0("Weather icon: : %s\n", OWOC.current->icon);        
-        LOG0("\nWeather update times: %d\n", updateTimes);                  
+        LOG1("\nCURRENT\n");        
+        LOG1("Weather summary: : %s\n", OWOC.current->summary);
+        LOG1("Weather icon: : %s\n", OWOC.current->icon);        
+        LOG0("Weather update times: %d\n", updateTimes);                  
     } 
     else {
         clockUpdate();
@@ -137,14 +133,14 @@ void weatherUpdate(int num = 0) {
         for (int day = 0; day < 8; day++) {
             forecastWeatherIcon[day] = OWOC.forecast[day].icon;
             forecastWeekNames[day] = OWOC.forecast[day].weekDayName;
-            LOG0("Date: %s Icon: %s\n", forecastWeekNames[day], forecastWeatherIcon[day]);
+            LOG1("Date: %s Icon: %s\n", forecastWeekNames[day], forecastWeatherIcon[day]);
         }
 
         LOG0("\nHOURLY   - Up to 48 hours forecast\n");
         for (int hour = 0; hour < 4; hour++) {
             forecastHours[hour] = OWOC.hour[hour].readableTime;
             forecastPOP[hour] = OWOC.hour[hour].pop;
-            LOG0("%s The chance of rain: % .2f\n", OWOC.hour[hour].readableTime, OWOC.hour[hour].pop);            
+            LOG1("%s The chance of rain: % .2f\n", OWOC.hour[hour].readableTime, OWOC.hour[hour].pop);            
         }
     } 
     else {

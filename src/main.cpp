@@ -21,7 +21,7 @@ void setup() {
     // HomeSpan    
     homeSpan.setControlPin(BUTTON_BUILT_IN);
     homeSpan.setStatusPin(EZSTARTKIT_IO6);
-    homeSpan.setStatusAutoOff(10);        
+    homeSpan.setStatusAutoOff(10);
 
     homeSpan.setConnectionCallback(webServicesUpdate);  
     homeSpan.setStatusCallback(loadingSceneDisplay);

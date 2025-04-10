@@ -49,10 +49,7 @@ enum PomodoroState {
     RESET = 0,
     READY = 1,
     TASK = 2,
-    BREAK = 3,
-    REST = 4,
-    STOP = 5, 
-    SKIP = 6
+    BREAK = 3,    
 };
 
 HS_STATUS pairedStatus;
@@ -249,12 +246,14 @@ struct DEV_OLED : Service::Switch {
     const int Max_Finished_Times = 4;
 
     enum PomodoroState currentPomodoroState;
-    enum PomodoroState nextPomodoroState;
-    enum PomodoroState tempPomodoroState;
-    int second;    
-    int minute;
-    int progress; 
-    int finishedTimes;
+    enum PomodoroState nextPomodoroState;    
+
+    bool onTaskFlag;
+    int statePeriod;
+    int timerSecond;    
+    int timerMinute;
+    int stateProgress; 
+    int taskFinishedTimes; 
     
     enum DisplayMode displayMode;
     int maxPage;
@@ -275,10 +274,12 @@ struct DEV_OLED : Service::Switch {
         
         currentPomodoroState = RESET;
         nextPomodoroState = TASK;
-        second = Task_Period;    
-        minute = second / 60;
-        progress = 100 - (second * 100) / Task_Period;
-        finishedTimes = 0;               
+        statePeriod = Task_Period;
+        timerSecond = statePeriod;    
+        timerMinute = timerSecond / 60;
+        stateProgress = 100 - (timerSecond * 100) / Task_Period;
+        taskFinishedTimes = 0;        
+        onTaskFlag = false;               
 
         displayMode = NORMAL;
         maxPage = 3;
@@ -343,24 +344,21 @@ struct DEV_OLED : Service::Switch {
                     
                     // Record the currnetState before goto state STOP.
                     // When the button be preesed next time, currentState can resume to the original one. 
-                    if (currentPomodoroState != STOP) {
-                        tempPomodoroState = currentPomodoroState;
-                    } 
+                    // if (currentPomodoroState != STOP) {
+                    //     tempPomodoroState = currentPomodoroState;
+                    // } 
                     currentPomodoroState = nextPomodoroState;
                 }
                 else {
                     if (page < maxPage) {                    
                         ++page;
-    
-                        // ...toggle the value of the power Characteristic          
-                        displayState->setVal(true);
                     }
                     else {
-                        page = 0;
-    
-                        // ...toggle the value of the power Characteristic          
-                        displayState->setVal(false);
+                        page = 1;
                     } 
+
+                    // ...toggle the value of the power Characteristic          
+                    displayState->setVal(true);
                 }
 
                 displayPage();
@@ -370,18 +368,13 @@ struct DEV_OLED : Service::Switch {
 
                 if (displayMode == POMODORO) {
 
-                    // Ready to break, Stop breaking, Breaking...
-                    if ((currentPomodoroState == READY || currentPomodoroState == STOP) 
-                    && (nextPomodoroState == BREAK || nextPomodoroState == TASK)
-                    || (currentPomodoroState == BREAK)) {
-                        
-                        currentPomodoroState = SKIP;                        
-                    }                    
-                    // Ready to break, Stop resting, Resting...
-                    else if (currentPomodoroState == REST || (currentPomodoroState == READY && nextPomodoroState == REST) 
-                        || (currentPomodoroState == STOP && nextPomodoroState == REST)) {
-                        
-                        currentPomodoroState = RESET;
+                    // Skip the state BREAK or state READY(ready to break) to state READY(ready to start a task)
+                    if (!onTaskFlag) {
+
+                        // Set second to 0 to force state READY to update the timer.
+                        timerSecond = 0;
+                        onTaskFlag = true;
+                        currentPomodoroState = READY;
                     }
                 }                
             }
@@ -425,7 +418,6 @@ struct DEV_OLED : Service::Switch {
                     // Update weather information manually
                     weatherUpdate();
                 }
-
                 displayPage();                
             }     
         }
@@ -433,7 +425,7 @@ struct DEV_OLED : Service::Switch {
 
     void loop() {
 
-        while (millis() - time_now > updatePeriod_MS && ntpAvailableFlag && pairedStatus == HS_PAIRED 
+        while (millis() - time_now > updatePeriod_MS && ntpAvailableFlag && pairedStatus == HS_PAIRED
             && (displayState->getVal() || displayMode == POMODORO)) {
 
             time_now = millis();
@@ -441,92 +433,83 @@ struct DEV_OLED : Service::Switch {
             if (displayMode == POMODORO) {
                 switch (currentPomodoroState) {
                     case RESET:
-                        second = Task_Period;
-                        minute = second / 60;
-                        progress = 100 - (second * 100) / Task_Period;                    
-                        finishedTimes = 0;
-                        currentPomodoroState = READY;
-                        nextPomodoroState = TASK;                        
+                        statePeriod = Task_Period;
+                        timerSecond = statePeriod;
+                        timerMinute = timerSecond / 60;
+                        stateProgress = 100 - (timerSecond * 100) / statePeriod;                    
+                        taskFinishedTimes = 0;
+                        onTaskFlag = true;
+                        currentPomodoroState = READY;                                                
                         break;
-    
+                    
                     case READY:
-                        break;
-    
-                    case TASK:
-                        if (second > 0) {                    
-                            second -= 1;
-                            minute = second / 60;
-                            progress = 100 - (second * 100) / Task_Period;
-                            nextPomodoroState = STOP;                            
-                        }
-                        else {
-                            ++finishedTimes;
-                            if (finishedTimes < Max_Finished_Times) { 
-                                second = Break_Period;
-                                minute = second / 60;
-                                progress = 100 - (second * 100) / Break_Period;
-                                nextPomodoroState = BREAK;
+                        if (onTaskFlag) {
+                            if (taskFinishedTimes < 4) {                                 
+                                statePeriod = Task_Period;
+                                nextPomodoroState = TASK;                               
                             }
                             else {
-                                second = Rest_Period;
-                                minute = second / 60;
-                                progress = 100 - (second * 100)/ Rest_Period;
-                                nextPomodoroState = REST;
-                            } 
-                            currentPomodoroState = READY;
-                            ringBuzzer(taskEndingMelody, taskEndingDuration);                                                                 
-                        }                         
+                                nextPomodoroState = RESET;                                
+                            }                             
+                        }                        
+                        else {
+                            if (taskFinishedTimes < 4) {
+                                statePeriod = Break_Period;
+                            }
+                            else {                                
+                                statePeriod = Rest_Period;
+                            }   
+                            nextPomodoroState = BREAK;                         
+                        }
+
+                        // If a state is over, reset the timer.
+                        // Other conditions(e.g. stop timer or ready to reset) don't reset.
+                        if (timerSecond <= 0 && nextPomodoroState != RESET) {
+                            timerSecond = statePeriod;
+                        }                        
+                        timerMinute = timerSecond / 60;
+                        stateProgress = 100 - (timerSecond * 100) / statePeriod;
                         break;
-    
+
+                    case TASK:
+                        if (timerSecond > 0) {
+                            timerSecond -= 1;
+                            timerMinute = timerSecond / 60;
+                            stateProgress = 100 - (timerSecond * 100) / statePeriod; 
+                            nextPomodoroState = READY;                           
+                        }
+                        else {
+                            ++taskFinishedTimes;
+                            onTaskFlag = false; 
+                            currentPomodoroState = READY;
+                            ringBuzzer(taskEndingMelody, taskEndingDuration);                          
+                        }
+                        break;
+
                     case BREAK:
-                        if (second > 0) {                    
-                            second -= 1;
-                            minute = second / 60;
-                            progress = 100 - (second * 100) / Break_Period;
-                            nextPomodoroState = STOP;                                                   
+                        if (timerSecond > 0) {                    
+                            timerSecond -= 1;
+                            timerMinute = timerSecond / 60;
+                            stateProgress = 100 - (timerSecond * 100) / statePeriod;
+                            nextPomodoroState = READY;                                                   
                         }
-                        else { 
-                            second = Task_Period;
-                            minute = second / 60;
-                            progress = 100 - (second * 100) / Task_Period;
-                            nextPomodoroState = TASK;
-                            currentPomodoroState = READY;                            
-                            ringBuzzer(breakEndingMelody, breakEndingDuration);                                                                    
-                        } 
-                        break;
-    
-                    case REST:
-                        if (second > 0) {                    
-                            second -= 1;
-                            minute = second / 60;
-                            progress = 100 - (second * 100)/ Rest_Period;
-                            nextPomodoroState = STOP;
-                        }
-                        else {                               
-                            nextPomodoroState = RESET;
+                        else {
+                            onTaskFlag = true;                                                            
                             currentPomodoroState = READY;
-                            ringBuzzer(setCompletedMelody, setCompletedDuration);                                                                   
-                        }  
-                        break;
-                    
-                    case STOP:                        
-                        nextPomodoroState = tempPomodoroState;                        
-                        break;
-                    
-                    case SKIP:
-                        if (nextPomodoroState == TASK || nextPomodoroState == BREAK || nextPomodoroState == STOP) {
-                            second = Task_Period;
-                            minute = second / 60;
-                            progress = 100 - (second * 100) / Task_Period;                            
-                            nextPomodoroState = TASK;                            
-                        }  
+                            if (taskFinishedTimes < 4) {
+                                ringBuzzer(breakEndingMelody, breakEndingDuration);  
+                            }
+                            else {
+                                ringBuzzer(setCompletedMelody, setCompletedDuration);
+                            }                                                   
+                        }
                         break;
                     
                     default:
+                        LOG0("POMODORO state error!\n");
                         break;
-                }              
-            }            
-
+                }
+            }
             displayPage();                        
         }
     }
@@ -564,7 +547,7 @@ struct DEV_OLED : Service::Switch {
                     break;               
     
                 default:
-                    updatePeriod_MS = 3000;                    
+                    updatePeriod_MS = 10000;                    
                     u8g2.firstPage();
                     do {
                         displayErrorMessage(); 
@@ -584,14 +567,14 @@ struct DEV_OLED : Service::Switch {
                 do {
                     displayPomodoroTimer();
                     displayPomodoroCheckbox();
-                    
-                    if ((currentPomodoroState == READY || currentPomodoroState == SKIP) && nextPomodoroState == TASK) {                        
+
+                    if (currentPomodoroState == READY && onTaskFlag == true && taskFinishedTimes < 4 && timerSecond == statePeriod) {
                         displayHintMessage("Let's start a task!");
                     }
-                    else if (currentPomodoroState == READY && nextPomodoroState == BREAK) {
+                    else if (currentPomodoroState == READY && onTaskFlag == false && taskFinishedTimes < 4 && timerSecond == statePeriod) {
                         displayHintMessage("Let's take a break!");
                     }
-                    else if (currentPomodoroState == READY && nextPomodoroState == REST) {
+                    else if (currentPomodoroState == READY && onTaskFlag == false && taskFinishedTimes == 4 && timerSecond == statePeriod) {
                         displayHintMessage("Let's take a rest!");
                     }
                     else if (currentPomodoroState == READY && nextPomodoroState == RESET) {
@@ -599,7 +582,7 @@ struct DEV_OLED : Service::Switch {
                     }
                     else {
                         displayPomodoroBar();
-                    }                                        
+                    }                                                       
                 } while (u8g2.nextPage());                
                 break;
             
@@ -850,15 +833,15 @@ struct DEV_OLED : Service::Switch {
         int timerX = 0;
         int timerY = u8g2.getMaxCharHeight() - 1;
         u8g2.setCursor(timerX, timerY);
-        if (minute < 10) {
+        if (timerMinute < 10) {
             u8g2.print("0");      
         }
-        u8g2.print(minute);
+        u8g2.print(timerMinute);
         u8g2.print(":");
-        if (second % 60 < 10) {
+        if (timerSecond % 60 < 10) {
             u8g2.print("0");      
         }
-        u8g2.print(second % 60);        
+        u8g2.print(timerSecond % 60);        
     }
 
     void displayPomodoroBar() {
@@ -871,11 +854,11 @@ struct DEV_OLED : Service::Switch {
         int space = 2;
         int filledBarX = emptyBarX + space;
         int filledBarY = emptyBarY + space;
-        int filledBarWidth = progress;
+        int filledBarWidth = stateProgress;
         int filledBarHeigh = emptyBarHeigh - 2 * space;
 
         // The radius argument of the drawRBox/drawRFrame, must meet the requirement w >= 2 * (r + 1)
-        int filledBarRadius = progress / 2 - 1 >= emptyBarRadius ? emptyBarRadius: 0;
+        int filledBarRadius = stateProgress / 2 - 1 >= emptyBarRadius ? emptyBarRadius: 0;
                 
         String progressStr = String(filledBarWidth);
         progressStr += " %";
@@ -904,13 +887,13 @@ struct DEV_OLED : Service::Switch {
         int checkboxY = u8g2.getMaxCharHeight();
 
         // Draw the filled checkbox 
-        for (int i = 0; i < finishedTimes; ++i) {
+        for (int i = 0; i < taskFinishedTimes; ++i) {
             u8g2.drawGlyph(checkboxX, checkboxY, 0x2611);
             checkboxY += u8g2.getMaxCharHeight();
         }
 
         // Draw the empty checkbox                
-        for (int i = 0; i < Max_Finished_Times - finishedTimes; ++i) {
+        for (int i = 0; i < Max_Finished_Times - taskFinishedTimes; ++i) {
             u8g2.drawGlyph(checkboxX, checkboxY, 0x2610);
             checkboxY += u8g2.getMaxCharHeight();
         }     
