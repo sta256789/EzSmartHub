@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <HomeSpan.h>
+#include "ApSettings_Serive.h"
 #include "EzStartKit_Wire.h"
 #include "OpenWeather_Service.h"
 #include "Web_Services.h"
@@ -12,8 +13,6 @@
 // Built-in Button
 #define BUTTON_BUILT_IN 0
 
-uint32_t time_now = millis();
-
 void setup() {
     // put your setup code here, to run once:
     Serial.begin(115200);
@@ -22,7 +21,7 @@ void setup() {
     homeSpan.setControlPin(BUTTON_BUILT_IN);
     homeSpan.setStatusPin(EZSTARTKIT_IO6);
     homeSpan.setStatusAutoOff(10);
-
+    
     homeSpan.setConnectionCallback(webServicesUpdate);  
     homeSpan.setStatusCallback(loadingSceneDisplay);
     homeSpan.begin(Category::Bridges, "HomeSpan Bridge");
@@ -74,8 +73,7 @@ void loop() {
     // put your main code here, to run repeatedly:
     homeSpan.poll();
     
-    if (millis() - time_now > webServicesUpdatePeriod_MS) {
-        time_now = millis();
+    if (millis() - webServicesLastUpdateTime_MS > webServicesUpdatePeriod_MS) {        
 
         webServicesUpdate();
     }

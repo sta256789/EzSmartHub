@@ -2,13 +2,17 @@
 #define OPENWEATHER_SERVICE_H
 
 #include <OpenWeatherOneCall.h>
+#include <Preferences.h>
 #include "NTP_Service.h"
+#include "APIKey.h"
 
 #ifndef APIKEY_H
 char ONECALLKEY[] = "";
 #endif
 
 #define MAXAPICALLSPERDAY 1000
+
+Preferences preference;
 
 bool weatherAvailableFlag = false;
 
@@ -23,6 +27,8 @@ String forecastWeekNames[8];
 String forecastHours[8];
 
 float forecastPOP[4];
+
+int currentDay = 0;
 
 int updateTimes = 0;
 
@@ -91,52 +97,71 @@ int myDTF = 2;     /*
 
 OpenWeatherOneCall OWOC;  // <------ Invoke Library like this
 
-void weatherUpdate(int num = 0) {
+void weatherUpdate() {    
 
     //Now call the weather. Please notice no arguments are required in this call
     if (updateTimes < MAXAPICALLSPERDAY) {
         OWOC.parseWeather();
+        ntpAvailableFlag = true;
     }
     else {
-        LOG0("\nThe free api calls have run out!\n");
+        LOG0("\nFree API calls have run out!\n");
     }
 
     // Location info is available for ALL modes
     cityStr = OWOC.location.CITY;
     stateStr = OWOC.location.STATE;
     countryStr = OWOC.location.COUNTRY;
-    LOG0("\nLocation: % s, % s % s\n", OWOC.location.CITY, OWOC.location.STATE, OWOC.location.COUNTRY);
+    LOG0("\nLocation: % s, % s % s\n", OWOC.location.CITY, OWOC.location.STATE, OWOC.location.COUNTRY); 
     
     //Check if data is in the struct for all variables before using them
     if (OWOC.current) {
+
+        time_t epochTime;
+        time(&epochTime); 
+        struct tm standardTime;
+        gmtime_r(&epochTime, &standardTime);
+
+        // Initialize NVS with a namespace
+        preference.begin("myNameSpace", false); // false = read/write mode
+
+        currentDay = preference.getInt("currentDay", 0);
+        updateTimes = preference.getInt("updateTimes", 0);        
+
+        if (currentDay != standardTime.tm_mday) {
+            currentDay = standardTime.tm_mday;
+            preference.putInt("currentDay", currentDay);            
+            updateTimes = 0;  
+            LOG0("Free OpenWeatehr API calls have been reset!\n");          
+        }
         ++updateTimes;
-        ntpAvailableFlag = true;
+        preference.putInt("updateTimes", updateTimes);        
+        
+        // Close Preferences
+        preference.end();
+        
         weatherAvailableFlag = true;
-        currentWeatherIcon = OWOC.current->icon;
+        currentWeatherIcon = OWOC.current->icon;                
         printLocalTime(); 
         LOG1("\nCURRENT\n");        
         LOG1("Weather summary: : %s\n", OWOC.current->summary);
         LOG1("Weather icon: : %s\n", OWOC.current->icon);        
         LOG0("Weather update times: %d\n", updateTimes);                  
     } 
-    else {
-        clockUpdate();
-        weatherAvailableFlag = false;        
+    else {      
         LOG0("\nThe weather information is unavailable!\n");
         LOG0("\nCURRENT IS OFF or EMPTY\n");
     }
 
     //Check if data is in the struct for all variables before using them
-    if (OWOC.forecast) {  
-
-        LOG0("\nFORECAST - Up to 8 days future forecast\n");
+    if (OWOC.forecast) {
+        
         for (int day = 0; day < 8; day++) {
             forecastWeatherIcon[day] = OWOC.forecast[day].icon;
             forecastWeekNames[day] = OWOC.forecast[day].weekDayName;
             LOG1("Date: %s Icon: %s\n", forecastWeekNames[day], forecastWeatherIcon[day]);
         }
-
-        LOG0("\nHOURLY   - Up to 48 hours forecast\n");
+        
         for (int hour = 0; hour < 4; hour++) {
             forecastHours[hour] = OWOC.hour[hour].readableTime;
             forecastPOP[hour] = OWOC.hour[hour].pop;

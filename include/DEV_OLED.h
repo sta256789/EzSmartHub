@@ -260,7 +260,7 @@ struct DEV_OLED : Service::Switch {
     int page;
     
     uint32_t updatePeriod_MS;
-    uint32_t time_now;    
+    uint32_t lastUpdateTime;    
 
     int selectPin;
     int powerPin;
@@ -286,7 +286,7 @@ struct DEV_OLED : Service::Switch {
         page = 1;
 
         updatePeriod_MS = 1000;
-        time_now = millis();
+        lastUpdateTime = millis();
 
         this->selectPin = selectPin;
         this->powerPin = powerPin;
@@ -340,13 +340,8 @@ struct DEV_OLED : Service::Switch {
             // If a SINGLE press of the power button...
             if (pressType == SpanButton::SINGLE) {
 
-                if (displayMode == POMODORO) {
+                if (displayMode == POMODORO) {                    
                     
-                    // Record the currnetState before goto state STOP.
-                    // When the button be preesed next time, currentState can resume to the original one. 
-                    // if (currentPomodoroState != STOP) {
-                    //     tempPomodoroState = currentPomodoroState;
-                    // } 
                     currentPomodoroState = nextPomodoroState;
                 }
                 else {
@@ -414,9 +409,12 @@ struct DEV_OLED : Service::Switch {
                     LOG1("Reset the Pomodoro timer!\n");
                 }
                 else {
+                    page = 4;
+                    displayPage();
 
                     // Update weather information manually
-                    weatherUpdate();
+                    webServicesUpdate();
+                    page = 1;
                 }
                 displayPage();                
             }     
@@ -425,10 +423,10 @@ struct DEV_OLED : Service::Switch {
 
     void loop() {
 
-        while (millis() - time_now > updatePeriod_MS && ntpAvailableFlag && pairedStatus == HS_PAIRED
+        while (millis() - lastUpdateTime > updatePeriod_MS && ntpAvailableFlag && pairedStatus == HS_PAIRED
             && (displayState->getVal() || displayMode == POMODORO)) {
 
-            time_now = millis();
+            lastUpdateTime = millis();
 
             if (displayMode == POMODORO) {
                 switch (currentPomodoroState) {
@@ -547,13 +545,20 @@ struct DEV_OLED : Service::Switch {
                     do {                    
                         displayPOP();
                     } while (u8g2.nextPage());
-                    break;               
+                    break;    
+                
+                case 4:                           
+                    u8g2.firstPage();
+                    do {
+                        displayMessage("Weather information is updating...");
+                    } while (u8g2.nextPage());
+                    break;
     
                 default:
                     updatePeriod_MS = 10000;                    
                     u8g2.firstPage();
                     do {
-                        displayErrorMessage(); 
+                        displayMessage("The is an error page in mode NORMAL!"); 
                     } while (u8g2.nextPage());                    
                     break;
             }
@@ -593,7 +598,7 @@ struct DEV_OLED : Service::Switch {
                 updatePeriod_MS = 10000;
                 u8g2.firstPage();
                 do {
-                    displayErrorMessage(); 
+                    displayMessage("The is an error page in mode POMODORO!"); 
                 } while (u8g2.nextPage());                                
                 break;
             }
@@ -948,9 +953,9 @@ struct DEV_OLED : Service::Switch {
         
     }
 
-    void displayErrorMessage() {        
+    void displayMessage(string message) {        
         u8g2.setFont(u8g2_font_8x13B_mf);
-        typingAnimation("THIS IS AN ERROR!");        
+        typingAnimation(message);        
     } 
 };
 
